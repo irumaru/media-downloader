@@ -5,7 +5,8 @@ runners:
   req:
     endpoint: http://localhost:8080
 steps:
-  - desc: チャンネル情報を取得できる
+  get_channel:
+    desc: チャンネル情報を取得できる
     req:
       /api/{{ vars.secret }}:
         get:
@@ -14,7 +15,8 @@ steps:
       current.res.status == 200
       && current.res.body.name != ""
 
-  - desc: ダウンロードを作成できる
+  create_download:
+    desc: ダウンロードを作成できる
     req:
       /api/{{ vars.secret }}/downloads:
         post:
@@ -25,10 +27,9 @@ steps:
       current.res.status == 202
       && current.res.body.status == "pending"
       && current.res.body.id != ""
-    bind:
-      download_id: current.res.body.id
 
-  - desc: ダウンロード一覧に作成したタスクが含まれる
+  check_list:
+    desc: ダウンロード一覧に作成したタスクが含まれる
     req:
       /api/{{ vars.secret }}/downloads:
         get:
@@ -36,4 +37,4 @@ steps:
     test: |
       current.res.status == 200
       && len(current.res.body.downloads) > 0
-      && current.res.body.downloads[0].id == vars.download_id
+      && current.res.body.downloads[0].id == steps.create_download.res.body.id
