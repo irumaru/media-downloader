@@ -1,0 +1,49 @@
+[tools]
+go = "1.26.1"
+node = "24.14.1"
+pnpm = "10.33.0"
+sqlc = "1.30.0"
+"go:github.com/ogen-go/ogen/cmd/ogen" = "1.20.1"
+"go:github.com/k1LoW/runn/cmd/runn" = "1.6.1"
+
+[tasks.gen]
+description = "全コード生成を実行"
+depends = ["gen:go", "gen:ts"]
+
+[tasks."gen:tsp"]
+description = "TypeSpec → OpenAPI を生成"
+run = "cd spec && pnpm exec -- tsp compile ."
+
+[tasks."gen:ts"]
+description = "OpenAPI → TypeScript 型を生成"
+depends = ["gen:tsp"]
+run = "pnpm --filter @media-downloader/frontend exec openapi-typescript ../spec/tsp-output/@typespec/openapi3/openapi.yaml -o src/api/schema.d.ts"
+
+[tasks."gen:go"]
+description = "Go のコード生成を実行"
+depends = ["gen:go:ogen", "gen:go:sqlc"]
+
+[tasks."gen:go:ogen"]
+description = "ogen で API コードを生成"
+depends = ["gen:tsp"]
+run = "ogen --target ./backend/api/ -package api --clean ./spec/tsp-output/@typespec/openapi3/openapi.yaml"
+
+[tasks."gen:go:sqlc"]
+description = "sqlc で DB クエリコードを生成"
+run = "sqlc generate -f ./backend/sqlc.yaml"
+
+[tasks.test]
+description = "全テストを実行"
+depends = ["test:unit", "test:e2e"]
+
+[tasks."test:unit"]
+description = "ユニットテストを実行"
+run = "cd backend && go test ./..."
+
+[tasks."test:e2e"]
+description = "API E2Eテストを実行 (サーバー起動状態で)"
+run = "runn run e2e/*.yaml"
+
+[tasks.clean]
+description = "生成コードを削除"
+run = "rm -rf ./backend/api/oas_*_gen.go ./backend/db/models.go ./backend/db/queries.sql.go ./frontend/src/api/schema.d.ts"

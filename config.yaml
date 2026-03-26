@@ -1,0 +1,19 @@
+server:
+  port: 8080
+  static_dir: "./frontend/dist"
+
+database:
+  path: "./data/media-downloader.db"
+
+ytdlp:
+  path: "yt-dlp"
+  audio_format: ""
+
+channels:
+  - secret: "abc123def456"
+    name: "Music Collection A"
+    output_dir: "/data/music_a"
+
+  - secret: "xyz789ghi012"
+    name: "Music Collection B"
+    output_dir: "/data/music_b"

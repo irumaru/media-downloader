@@ -1,0 +1,18 @@
+version: "2"
+sql:
+  - engine: "sqlite"
+    queries: "db/queries.sql"
+    schema: "db/schema.sql"
+    gen:
+      go:
+        package: "db"
+        out: "db"
+        overrides:
+          - db_type: "DATETIME"
+            nullable: false
+            go_type: "time.Time"
+          - db_type: "DATETIME"
+            nullable: true
+            go_type:
+              import: "database/sql"
+              type: "NullTime"

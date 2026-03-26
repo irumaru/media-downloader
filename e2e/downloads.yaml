@@ -1,0 +1,39 @@
+desc: ダウンロードの作成と一覧取得
+vars:
+  secret: "abc123def456"
+runners:
+  req:
+    endpoint: http://localhost:8080
+steps:
+  - desc: チャンネル情報を取得できる
+    req:
+      /api/{{ vars.secret }}:
+        get:
+          body: null
+    test: |
+      current.res.status == 200
+      && current.res.body.name != ""
+
+  - desc: ダウンロードを作成できる
+    req:
+      /api/{{ vars.secret }}/downloads:
+        post:
+          body:
+            application/json:
+              url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    test: |
+      current.res.status == 202
+      && current.res.body.status == "pending"
+      && current.res.body.id != ""
+    bind:
+      download_id: current.res.body.id
+
+  - desc: ダウンロード一覧に作成したタスクが含まれる
+    req:
+      /api/{{ vars.secret }}/downloads:
+        get:
+          body: null
+    test: |
+      current.res.status == 200
+      && len(current.res.body.downloads) > 0
+      && current.res.body.downloads[0].id == vars.download_id
