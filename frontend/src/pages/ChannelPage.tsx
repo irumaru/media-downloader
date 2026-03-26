@@ -31,6 +31,7 @@ interface Props {
 export default function ChannelPage({ secret }: Props) {
   const [channelName, setChannelName] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [downloads, setDownloads] = useState<Download[]>([]);
   const [url, setUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -60,14 +61,18 @@ export default function ChannelPage({ secret }: Props) {
 
   useEffect(() => {
     if (!secret) return;
-    getChannelInfo(secret).then((info) => {
-      if (info === null) {
-        setNotFound(true);
-      } else {
-        setChannelName(info.name);
-        fetchDownloads();
-      }
-    });
+    getChannelInfo(secret)
+      .then((info) => {
+        if (info === null) {
+          setNotFound(true);
+        } else {
+          setChannelName(info.name);
+          fetchDownloads();
+        }
+      })
+      .catch((err: unknown) => {
+        setLoadError((err as Error).message ?? "読み込みに失敗しました");
+      });
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
@@ -94,6 +99,14 @@ export default function ChannelPage({ secret }: Props) {
     return (
       <div style={styles.container}>
         <p style={{ color: "#ef4444" }}>チャンネルが見つかりません。</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div style={styles.container}>
+        <p style={{ color: "#ef4444" }}>エラー: {loadError}</p>
       </div>
     );
   }
