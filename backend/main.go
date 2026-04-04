@@ -72,6 +72,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle("/api/", srv)
+	mux.Handle("/health", srv)
 	mux.Handle("/", spaHandler(cfg.Server.StaticDir))
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
