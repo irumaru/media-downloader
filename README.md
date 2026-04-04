@@ -84,10 +84,8 @@ pnpm dev
 
 ### 開発環境へアクセスする
 
-```bash
-http://localhost:5173/abc123def456
-http://localhost:5173/xyz789ghi012
-```
+http://localhost:5173/list_secret_a
+http://localhost:5173/list_secret_b
 
 ## 開発
 

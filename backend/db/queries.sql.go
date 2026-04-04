@@ -40,6 +40,29 @@ func (q *Queries) CreateDownload(ctx context.Context, arg CreateDownloadParams) 
 	return i, err
 }
 
+const getDownloadByID = `-- name: GetDownloadByID :one
+SELECT id, channel, url, title, status, progress, filename, error, created_at, completed_at FROM downloads
+WHERE id = ?1
+`
+
+func (q *Queries) GetDownloadByID(ctx context.Context, id string) (Download, error) {
+	row := q.db.QueryRowContext(ctx, getDownloadByID, id)
+	var i Download
+	err := row.Scan(
+		&i.ID,
+		&i.Channel,
+		&i.Url,
+		&i.Title,
+		&i.Status,
+		&i.Progress,
+		&i.Filename,
+		&i.Error,
+		&i.CreatedAt,
+		&i.CompletedAt,
+	)
+	return i, err
+}
+
 const getDownloadsByChannel = `-- name: GetDownloadsByChannel :many
 SELECT id, channel, url, title, status, progress, filename, error, created_at, completed_at FROM downloads
 WHERE channel = ?1
@@ -87,17 +110,18 @@ SET status       = ?1,
     title        = ?3,
     filename     = ?4,
     error        = ?5,
-    completed_at = CASE WHEN :status IN ('completed', 'error') THEN CURRENT_TIMESTAMP ELSE NULL END
-WHERE id = ?6
+    completed_at = ?6
+WHERE id = ?7
 `
 
 type UpdateDownloadStatusParams struct {
-	Status   string
-	Progress int64
-	Title    sql.NullString
-	Filename sql.NullString
-	Error    sql.NullString
-	ID       string
+	Status      string
+	Progress    int64
+	Title       sql.NullString
+	Filename    sql.NullString
+	Error       sql.NullString
+	CompletedAt sql.NullTime
+	ID          string
 }
 
 func (q *Queries) UpdateDownloadStatus(ctx context.Context, arg UpdateDownloadStatusParams) error {
@@ -107,6 +131,7 @@ func (q *Queries) UpdateDownloadStatus(ctx context.Context, arg UpdateDownloadSt
 		arg.Title,
 		arg.Filename,
 		arg.Error,
+		arg.CompletedAt,
 		arg.ID,
 	)
 	return err

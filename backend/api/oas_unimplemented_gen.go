@@ -31,6 +31,15 @@ func (UnimplementedHandler) GetChannelInfo(ctx context.Context, params GetChanne
 	return r, ht.ErrNotImplemented
 }
 
+// GetDownload implements getDownload operation.
+//
+// ダウンロード情報を取得.
+//
+// GET /api/{secret}/downloads/{id}
+func (UnimplementedHandler) GetDownload(ctx context.Context, params GetDownloadParams) (r *Download, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // ListDownloads implements listDownloads operation.
 //
 // ダウンロード一覧を取得.

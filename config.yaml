@@ -10,10 +10,10 @@ ytdlp:
   audio_format: ""
 
 channels:
-  - secret: "abc123def456"
+  - secret: "list_secret_a"
     name: "Music Collection A"
-    output_dir: "/data/music_a"
+    output_dir: "/app/data/music_a"
 
-  - secret: "xyz789ghi012"
+  - secret: "list_secret_b"
     name: "Music Collection B"
-    output_dir: "/data/music_b"
+    output_dir: "/app/data/music_b"

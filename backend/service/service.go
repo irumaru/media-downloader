@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
+	"time"
 
 	"media-downloader/config"
 	"media-downloader/db"
@@ -36,6 +38,11 @@ func (s *Service) GetChannel(secret string) (config.ChannelConfig, bool) {
 	return ch, ok
 }
 
+// GetDownload returns a single download by ID.
+func (s *Service) GetDownload(ctx context.Context, id string) (db.Download, error) {
+	return s.queries.GetDownloadByID(ctx, id)
+}
+
 // ListDownloads returns all downloads for the given channel secret.
 func (s *Service) ListDownloads(ctx context.Context, secret string) ([]db.Download, error) {
 	return s.queries.GetDownloadsByChannel(ctx, secret)
@@ -57,6 +64,8 @@ func (s *Service) CreateDownload(ctx context.Context, secret, url string) (db.Do
 		return db.Download{}, fmt.Errorf("create download record: %w", err)
 	}
 
+	slog.InfoContext(ctx, "Register download queue", "channel", secret, "url", url, "download_id", download.ID)
+
 	go s.runDownload(ch, download)
 
 	return download, nil
@@ -67,24 +76,39 @@ func (s *Service) runDownload(ch config.ChannelConfig, d db.Download) {
 
 	err := worker.Run(ctx, s.ytdlp.Path, s.ytdlp.AudioFormat, ch.OutputDir, d.Url,
 		func(u worker.ProgressUpdate) {
-			_ = s.queries.UpdateDownloadStatus(ctx, db.UpdateDownloadStatusParams{
-				ID:       d.ID,
-				Status:   u.Status,
-				Progress: int64(u.Progress),
-				Title:    nullString(u.Title),
-				Filename: nullString(u.Filename),
-				Error:    sql.NullString{},
+			err := s.queries.UpdateDownloadStatus(ctx, db.UpdateDownloadStatusParams{
+				ID:          d.ID,
+				Status:      u.Status,
+				Progress:    int64(u.Progress),
+				Title:       nullString(u.Title),
+				Filename:    nullString(u.Filename),
+				Error:       sql.NullString{},
+				CompletedAt: completedAt(u.Status),
 			})
+			if err != nil {
+				slog.ErrorContext(ctx, "failed to update download status", "download_id", d.ID, "err", err)
+			}
 		})
 
 	if err != nil {
-		_ = s.queries.UpdateDownloadStatus(ctx, db.UpdateDownloadStatusParams{
-			ID:       d.ID,
-			Status:   "error",
-			Progress: 0,
-			Error:    sql.NullString{String: err.Error(), Valid: true},
+		err := s.queries.UpdateDownloadStatus(ctx, db.UpdateDownloadStatusParams{
+			ID:          d.ID,
+			Status:      "error",
+			Progress:    0,
+			Error:       sql.NullString{String: err.Error(), Valid: true},
+			CompletedAt: completedAt("error"),
 		})
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to update download status", "download_id", d.ID, "err", err)
+		}
 	}
+}
+
+func completedAt(status string) sql.NullTime {
+	if status == "completed" || status == "error" {
+		return sql.NullTime{Time: time.Now(), Valid: true}
+	}
+	return sql.NullTime{}
 }
 
 func nullString(s string) sql.NullString {

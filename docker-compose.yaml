@@ -7,11 +7,12 @@ services:
     volumes:
       - ./backend:/app
       - ./config.yaml:/app/config.yaml
-      - ./data:/app/data
       - go-cache:/root/.cache/go-build
       - go-mod:/root/go/pkg/mod
     ports:
       - "8080:8080"
+    environment:
+      - LOG_LEVEL=debug
     command: air
 
 volumes:

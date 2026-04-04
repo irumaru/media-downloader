@@ -20,6 +20,12 @@ type Handler interface {
 	//
 	// GET /api/{secret}
 	GetChannelInfo(ctx context.Context, params GetChannelInfoParams) (*ChannelInfoResponse, error)
+	// GetDownload implements getDownload operation.
+	//
+	// ダウンロード情報を取得.
+	//
+	// GET /api/{secret}/downloads/{id}
+	GetDownload(ctx context.Context, params GetDownloadParams) (*Download, error)
 	// ListDownloads implements listDownloads operation.
 	//
 	// ダウンロード一覧を取得.
