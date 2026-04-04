@@ -18,7 +18,7 @@ var _ Handler = UnimplementedHandler{}
 // ダウンロードを開始.
 //
 // POST /api/{secret}/downloads
-func (UnimplementedHandler) CreateDownload(ctx context.Context, req *CreateDownloadRequest, params CreateDownloadParams) (r *Download, _ error) {
+func (UnimplementedHandler) CreateDownload(ctx context.Context, req *CreateDownloadRequest, params CreateDownloadParams) (r CreateDownloadRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -27,7 +27,7 @@ func (UnimplementedHandler) CreateDownload(ctx context.Context, req *CreateDownl
 // チャンネル情報を取得.
 //
 // GET /api/{secret}
-func (UnimplementedHandler) GetChannelInfo(ctx context.Context, params GetChannelInfoParams) (r *ChannelInfoResponse, _ error) {
+func (UnimplementedHandler) GetChannelInfo(ctx context.Context, params GetChannelInfoParams) (r GetChannelInfoRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -36,7 +36,16 @@ func (UnimplementedHandler) GetChannelInfo(ctx context.Context, params GetChanne
 // ダウンロード情報を取得.
 //
 // GET /api/{secret}/downloads/{id}
-func (UnimplementedHandler) GetDownload(ctx context.Context, params GetDownloadParams) (r *Download, _ error) {
+func (UnimplementedHandler) GetDownload(ctx context.Context, params GetDownloadParams) (r GetDownloadRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// Healthcheck implements healthcheck operation.
+//
+// サービスの死活確認.
+//
+// GET /health
+func (UnimplementedHandler) Healthcheck(ctx context.Context) (r *HealthResponse, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -45,14 +54,6 @@ func (UnimplementedHandler) GetDownload(ctx context.Context, params GetDownloadP
 // ダウンロード一覧を取得.
 //
 // GET /api/{secret}/downloads
-func (UnimplementedHandler) ListDownloads(ctx context.Context, params ListDownloadsParams) (r *DownloadListResponse, _ error) {
+func (UnimplementedHandler) ListDownloads(ctx context.Context, params ListDownloadsParams) (r ListDownloadsRes, _ error) {
 	return r, ht.ErrNotImplemented
-}
-
-// NewError creates *ErrorResponseStatusCode from error returned by handler.
-//
-// Used for common default response.
-func (UnimplementedHandler) NewError(ctx context.Context, err error) (r *ErrorResponseStatusCode) {
-	r = new(ErrorResponseStatusCode)
-	return r
 }

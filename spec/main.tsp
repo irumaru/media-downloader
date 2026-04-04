@@ -5,7 +5,6 @@ using TypeSpec.Http;
 @service(#{
   title: "Media Downloader API",
 })
-@route("/api/{secret}")
 namespace MediaDownloader;
 
 /** ダウンロードステータス */
@@ -45,23 +44,34 @@ model ChannelInfoResponse {
   name: string;
 }
 
+/** ヘルスチェックレスポンス */
+model HealthResponse {
+  status: string;
+}
+
 /** エラーレスポンス */
 @error
 model ErrorResponse {
   message: string;
 }
 
+/** サービスの死活確認 */
+@route("/health")
+@get
+op healthcheck(): HealthResponse;
+
 /** チャンネル情報を取得 */
+@route("/api/{secret}")
 @get
 op getChannelInfo(@path secret: string): ChannelInfoResponse | ErrorResponse;
 
 /** ダウンロード一覧を取得 */
-@route("/downloads")
+@route("/api/{secret}/downloads")
 @get
 op listDownloads(@path secret: string): DownloadListResponse | ErrorResponse;
 
 /** ダウンロードを開始 */
-@route("/downloads")
+@route("/api/{secret}/downloads")
 @post
 op createDownload(
   @path secret: string,
@@ -72,6 +82,6 @@ op createDownload(
 } | ErrorResponse;
 
 /** ダウンロード情報を取得 */
-@route("/downloads/{id}")
+@route("/api/{secret}/downloads/{id}")
 @get
 op getDownload(@path secret: string, @path id: string): Download | ErrorResponse;

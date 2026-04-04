@@ -32,25 +32,31 @@ type Invoker interface {
 	// ダウンロードを開始.
 	//
 	// POST /api/{secret}/downloads
-	CreateDownload(ctx context.Context, request *CreateDownloadRequest, params CreateDownloadParams) (*Download, error)
+	CreateDownload(ctx context.Context, request *CreateDownloadRequest, params CreateDownloadParams) (CreateDownloadRes, error)
 	// GetChannelInfo invokes getChannelInfo operation.
 	//
 	// チャンネル情報を取得.
 	//
 	// GET /api/{secret}
-	GetChannelInfo(ctx context.Context, params GetChannelInfoParams) (*ChannelInfoResponse, error)
+	GetChannelInfo(ctx context.Context, params GetChannelInfoParams) (GetChannelInfoRes, error)
 	// GetDownload invokes getDownload operation.
 	//
 	// ダウンロード情報を取得.
 	//
 	// GET /api/{secret}/downloads/{id}
-	GetDownload(ctx context.Context, params GetDownloadParams) (*Download, error)
+	GetDownload(ctx context.Context, params GetDownloadParams) (GetDownloadRes, error)
+	// Healthcheck invokes healthcheck operation.
+	//
+	// サービスの死活確認.
+	//
+	// GET /health
+	Healthcheck(ctx context.Context) (*HealthResponse, error)
 	// ListDownloads invokes listDownloads operation.
 	//
 	// ダウンロード一覧を取得.
 	//
 	// GET /api/{secret}/downloads
-	ListDownloads(ctx context.Context, params ListDownloadsParams) (*DownloadListResponse, error)
+	ListDownloads(ctx context.Context, params ListDownloadsParams) (ListDownloadsRes, error)
 }
 
 // Client implements OAS client.
@@ -97,12 +103,12 @@ func (c *Client) requestURL(ctx context.Context) *url.URL {
 // ダウンロードを開始.
 //
 // POST /api/{secret}/downloads
-func (c *Client) CreateDownload(ctx context.Context, request *CreateDownloadRequest, params CreateDownloadParams) (*Download, error) {
+func (c *Client) CreateDownload(ctx context.Context, request *CreateDownloadRequest, params CreateDownloadParams) (CreateDownloadRes, error) {
 	res, err := c.sendCreateDownload(ctx, request, params)
 	return res, err
 }
 
-func (c *Client) sendCreateDownload(ctx context.Context, request *CreateDownloadRequest, params CreateDownloadParams) (res *Download, err error) {
+func (c *Client) sendCreateDownload(ctx context.Context, request *CreateDownloadRequest, params CreateDownloadParams) (res CreateDownloadRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("createDownload"),
 		semconv.HTTPRequestMethodKey.String("POST"),
@@ -193,12 +199,12 @@ func (c *Client) sendCreateDownload(ctx context.Context, request *CreateDownload
 // チャンネル情報を取得.
 //
 // GET /api/{secret}
-func (c *Client) GetChannelInfo(ctx context.Context, params GetChannelInfoParams) (*ChannelInfoResponse, error) {
+func (c *Client) GetChannelInfo(ctx context.Context, params GetChannelInfoParams) (GetChannelInfoRes, error) {
 	res, err := c.sendGetChannelInfo(ctx, params)
 	return res, err
 }
 
-func (c *Client) sendGetChannelInfo(ctx context.Context, params GetChannelInfoParams) (res *ChannelInfoResponse, err error) {
+func (c *Client) sendGetChannelInfo(ctx context.Context, params GetChannelInfoParams) (res GetChannelInfoRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("getChannelInfo"),
 		semconv.HTTPRequestMethodKey.String("GET"),
@@ -285,12 +291,12 @@ func (c *Client) sendGetChannelInfo(ctx context.Context, params GetChannelInfoPa
 // ダウンロード情報を取得.
 //
 // GET /api/{secret}/downloads/{id}
-func (c *Client) GetDownload(ctx context.Context, params GetDownloadParams) (*Download, error) {
+func (c *Client) GetDownload(ctx context.Context, params GetDownloadParams) (GetDownloadRes, error) {
 	res, err := c.sendGetDownload(ctx, params)
 	return res, err
 }
 
-func (c *Client) sendGetDownload(ctx context.Context, params GetDownloadParams) (res *Download, err error) {
+func (c *Client) sendGetDownload(ctx context.Context, params GetDownloadParams) (res GetDownloadRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("getDownload"),
 		semconv.HTTPRequestMethodKey.String("GET"),
@@ -391,17 +397,91 @@ func (c *Client) sendGetDownload(ctx context.Context, params GetDownloadParams) 
 	return result, nil
 }
 
+// Healthcheck invokes healthcheck operation.
+//
+// サービスの死活確認.
+//
+// GET /health
+func (c *Client) Healthcheck(ctx context.Context) (*HealthResponse, error) {
+	res, err := c.sendHealthcheck(ctx)
+	return res, err
+}
+
+func (c *Client) sendHealthcheck(ctx context.Context) (res *HealthResponse, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("healthcheck"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/health"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, HealthcheckOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/health"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer body.Close()
+
+	stage = "DecodeResponse"
+	result, err := decodeHealthcheckResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // ListDownloads invokes listDownloads operation.
 //
 // ダウンロード一覧を取得.
 //
 // GET /api/{secret}/downloads
-func (c *Client) ListDownloads(ctx context.Context, params ListDownloadsParams) (*DownloadListResponse, error) {
+func (c *Client) ListDownloads(ctx context.Context, params ListDownloadsParams) (ListDownloadsRes, error) {
 	res, err := c.sendListDownloads(ctx, params)
 	return res, err
 }
 
-func (c *Client) sendListDownloads(ctx context.Context, params ListDownloadsParams) (res *DownloadListResponse, err error) {
+func (c *Client) sendListDownloads(ctx context.Context, params ListDownloadsParams) (res ListDownloadsRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("listDownloads"),
 		semconv.HTTPRequestMethodKey.String("GET"),

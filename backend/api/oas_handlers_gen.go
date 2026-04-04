@@ -137,7 +137,7 @@ func (s *Server) handleCreateDownloadRequest(args [1]string, argsEscaped bool, w
 		}
 	}()
 
-	var response *Download
+	var response CreateDownloadRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -158,7 +158,7 @@ func (s *Server) handleCreateDownloadRequest(args [1]string, argsEscaped bool, w
 		type (
 			Request  = *CreateDownloadRequest
 			Params   = CreateDownloadParams
-			Response = *Download
+			Response = CreateDownloadRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -177,19 +177,8 @@ func (s *Server) handleCreateDownloadRequest(args [1]string, argsEscaped bool, w
 		response, err = s.h.CreateDownload(ctx, request, params)
 	}
 	if err != nil {
-		if errRes, ok := errors.Into[*ErrorResponseStatusCode](err); ok {
-			if err := encodeErrorResponse(errRes, w, span); err != nil {
-				defer recordError("Internal", err)
-			}
-			return
-		}
-		if errors.Is(err, ht.ErrNotImplemented) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-			return
-		}
-		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
-			defer recordError("Internal", err)
-		}
+		defer recordError("Internal", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
 		return
 	}
 
@@ -291,7 +280,7 @@ func (s *Server) handleGetChannelInfoRequest(args [1]string, argsEscaped bool, w
 
 	var rawBody []byte
 
-	var response *ChannelInfoResponse
+	var response GetChannelInfoRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -312,7 +301,7 @@ func (s *Server) handleGetChannelInfoRequest(args [1]string, argsEscaped bool, w
 		type (
 			Request  = struct{}
 			Params   = GetChannelInfoParams
-			Response = *ChannelInfoResponse
+			Response = GetChannelInfoRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -331,19 +320,8 @@ func (s *Server) handleGetChannelInfoRequest(args [1]string, argsEscaped bool, w
 		response, err = s.h.GetChannelInfo(ctx, params)
 	}
 	if err != nil {
-		if errRes, ok := errors.Into[*ErrorResponseStatusCode](err); ok {
-			if err := encodeErrorResponse(errRes, w, span); err != nil {
-				defer recordError("Internal", err)
-			}
-			return
-		}
-		if errors.Is(err, ht.ErrNotImplemented) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-			return
-		}
-		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
-			defer recordError("Internal", err)
-		}
+		defer recordError("Internal", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
 		return
 	}
 
@@ -445,7 +423,7 @@ func (s *Server) handleGetDownloadRequest(args [2]string, argsEscaped bool, w ht
 
 	var rawBody []byte
 
-	var response *Download
+	var response GetDownloadRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -470,7 +448,7 @@ func (s *Server) handleGetDownloadRequest(args [2]string, argsEscaped bool, w ht
 		type (
 			Request  = struct{}
 			Params   = GetDownloadParams
-			Response = *Download
+			Response = GetDownloadRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -489,23 +467,136 @@ func (s *Server) handleGetDownloadRequest(args [2]string, argsEscaped bool, w ht
 		response, err = s.h.GetDownload(ctx, params)
 	}
 	if err != nil {
-		if errRes, ok := errors.Into[*ErrorResponseStatusCode](err); ok {
-			if err := encodeErrorResponse(errRes, w, span); err != nil {
-				defer recordError("Internal", err)
-			}
-			return
-		}
-		if errors.Is(err, ht.ErrNotImplemented) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-			return
-		}
-		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
-			defer recordError("Internal", err)
-		}
+		defer recordError("Internal", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
 		return
 	}
 
 	if err := encodeGetDownloadResponse(response, w, span); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
+// handleHealthcheckRequest handles healthcheck operation.
+//
+// サービスの死活確認.
+//
+// GET /health
+func (s *Server) handleHealthcheckRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("healthcheck"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.HTTPRouteKey.String("/health"),
+	}
+	// Add attributes from config.
+	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), HealthcheckOperation,
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Add Labeler to context.
+	labeler := &Labeler{attrs: otelAttrs}
+	ctx = contextWithLabeler(ctx, labeler)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+
+		attrSet := labeler.AttributeSet()
+		attrs := attrSet.ToSlice()
+		code := statusWriter.status
+		if code != 0 {
+			codeAttr := semconv.HTTPResponseStatusCode(code)
+			attrs = append(attrs, codeAttr)
+			span.SetAttributes(codeAttr)
+		}
+		attrOpt := metric.WithAttributes(attrs...)
+
+		// Increment request counter.
+		s.requests.Add(ctx, 1, attrOpt)
+
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
+	}()
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+
+			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
+			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
+			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
+			// max redirects exceeded), in which case status MUST be set to Error.
+			code := statusWriter.status
+			if code < 100 || code >= 500 {
+				span.SetStatus(codes.Error, stage)
+			}
+
+			attrSet := labeler.AttributeSet()
+			attrs := attrSet.ToSlice()
+			if code != 0 {
+				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
+			}
+
+			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		err error
+	)
+
+	var rawBody []byte
+
+	var response *HealthResponse
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    HealthcheckOperation,
+			OperationSummary: "",
+			OperationID:      "healthcheck",
+			Body:             nil,
+			RawBody:          rawBody,
+			Params:           middleware.Parameters{},
+			Raw:              r,
+		}
+
+		type (
+			Request  = struct{}
+			Params   = struct{}
+			Response = *HealthResponse
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			nil,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.Healthcheck(ctx)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.Healthcheck(ctx)
+	}
+	if err != nil {
+		defer recordError("Internal", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	if err := encodeHealthcheckResponse(response, w, span); err != nil {
 		defer recordError("EncodeResponse", err)
 		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
 			s.cfg.ErrorHandler(ctx, w, r, err)
@@ -603,7 +694,7 @@ func (s *Server) handleListDownloadsRequest(args [1]string, argsEscaped bool, w 
 
 	var rawBody []byte
 
-	var response *DownloadListResponse
+	var response ListDownloadsRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -624,7 +715,7 @@ func (s *Server) handleListDownloadsRequest(args [1]string, argsEscaped bool, w 
 		type (
 			Request  = struct{}
 			Params   = ListDownloadsParams
-			Response = *DownloadListResponse
+			Response = ListDownloadsRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -643,19 +734,8 @@ func (s *Server) handleListDownloadsRequest(args [1]string, argsEscaped bool, w 
 		response, err = s.h.ListDownloads(ctx, params)
 	}
 	if err != nil {
-		if errRes, ok := errors.Into[*ErrorResponseStatusCode](err); ok {
-			if err := encodeErrorResponse(errRes, w, span); err != nil {
-				defer recordError("Internal", err)
-			}
-			return
-		}
-		if errors.Is(err, ht.ErrNotImplemented) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-			return
-		}
-		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
-			defer recordError("Internal", err)
-		}
+		defer recordError("Internal", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
 		return
 	}
 

@@ -13,29 +13,31 @@ type Handler interface {
 	// ダウンロードを開始.
 	//
 	// POST /api/{secret}/downloads
-	CreateDownload(ctx context.Context, req *CreateDownloadRequest, params CreateDownloadParams) (*Download, error)
+	CreateDownload(ctx context.Context, req *CreateDownloadRequest, params CreateDownloadParams) (CreateDownloadRes, error)
 	// GetChannelInfo implements getChannelInfo operation.
 	//
 	// チャンネル情報を取得.
 	//
 	// GET /api/{secret}
-	GetChannelInfo(ctx context.Context, params GetChannelInfoParams) (*ChannelInfoResponse, error)
+	GetChannelInfo(ctx context.Context, params GetChannelInfoParams) (GetChannelInfoRes, error)
 	// GetDownload implements getDownload operation.
 	//
 	// ダウンロード情報を取得.
 	//
 	// GET /api/{secret}/downloads/{id}
-	GetDownload(ctx context.Context, params GetDownloadParams) (*Download, error)
+	GetDownload(ctx context.Context, params GetDownloadParams) (GetDownloadRes, error)
+	// Healthcheck implements healthcheck operation.
+	//
+	// サービスの死活確認.
+	//
+	// GET /health
+	Healthcheck(ctx context.Context) (*HealthResponse, error)
 	// ListDownloads implements listDownloads operation.
 	//
 	// ダウンロード一覧を取得.
 	//
 	// GET /api/{secret}/downloads
-	ListDownloads(ctx context.Context, params ListDownloadsParams) (*DownloadListResponse, error)
-	// NewError creates *ErrorResponseStatusCode from error returned by handler.
-	//
-	// Used for common default response.
-	NewError(ctx context.Context, err error) *ErrorResponseStatusCode
+	ListDownloads(ctx context.Context, params ListDownloadsParams) (ListDownloadsRes, error)
 }
 
 // Server implements http server based on OpenAPI v3 specification and

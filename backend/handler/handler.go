@@ -22,44 +22,41 @@ func New(svc *service.Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-func notFound(msg string) error {
+func errNotFound(msg string) *api.ErrorResponseStatusCode {
 	return &api.ErrorResponseStatusCode{StatusCode: 404, Response: api.ErrorResponse{Message: msg}}
 }
 
-func internalError(err error) error {
+func errInternal(err error) *api.ErrorResponseStatusCode {
 	return &api.ErrorResponseStatusCode{StatusCode: 500, Response: api.ErrorResponse{Message: err.Error()}}
 }
 
-func badRequest(msg string) error {
+func errBadRequest(msg string) *api.ErrorResponseStatusCode {
 	return &api.ErrorResponseStatusCode{StatusCode: 400, Response: api.ErrorResponse{Message: msg}}
 }
 
-// NewError converts an error into *api.ErrorResponseStatusCode for ogen.
-func (h *Handler) NewError(_ context.Context, err error) *api.ErrorResponseStatusCode {
-	if e, ok := err.(*api.ErrorResponseStatusCode); ok {
-		return e
-	}
-	return &api.ErrorResponseStatusCode{StatusCode: 500, Response: api.ErrorResponse{Message: err.Error()}}
+// Healthcheck handles GET /health
+func (h *Handler) Healthcheck(_ context.Context) (*api.HealthResponse, error) {
+	return &api.HealthResponse{Status: "ok"}, nil
 }
 
 // GetChannelInfo handles GET /api/{secret}
-func (h *Handler) GetChannelInfo(_ context.Context, params api.GetChannelInfoParams) (*api.ChannelInfoResponse, error) {
+func (h *Handler) GetChannelInfo(_ context.Context, params api.GetChannelInfoParams) (api.GetChannelInfoRes, error) {
 	ch, ok := h.svc.GetChannel(params.Secret)
 	if !ok {
-		return nil, notFound("channel not found")
+		return errNotFound("channel not found"), nil
 	}
 	return &api.ChannelInfoResponse{Name: ch.Name}, nil
 }
 
 // GetDownload handles GET /api/{secret}/downloads/{id}
-func (h *Handler) GetDownload(ctx context.Context, params api.GetDownloadParams) (*api.Download, error) {
+func (h *Handler) GetDownload(ctx context.Context, params api.GetDownloadParams) (api.GetDownloadRes, error) {
 	if _, ok := h.svc.GetChannel(params.Secret); !ok {
-		return nil, notFound("channel not found")
+		return errNotFound("channel not found"), nil
 	}
 
 	download, err := h.svc.GetDownload(ctx, params.ID)
 	if err != nil {
-		return nil, notFound("download not found")
+		return errNotFound("download not found"), nil
 	}
 
 	result := toAPIDownload(download)
@@ -67,14 +64,14 @@ func (h *Handler) GetDownload(ctx context.Context, params api.GetDownloadParams)
 }
 
 // ListDownloads handles GET /api/{secret}/downloads
-func (h *Handler) ListDownloads(ctx context.Context, params api.ListDownloadsParams) (*api.DownloadListResponse, error) {
+func (h *Handler) ListDownloads(ctx context.Context, params api.ListDownloadsParams) (api.ListDownloadsRes, error) {
 	if _, ok := h.svc.GetChannel(params.Secret); !ok {
-		return nil, notFound("channel not found")
+		return errNotFound("channel not found"), nil
 	}
 
 	downloads, err := h.svc.ListDownloads(ctx, params.Secret)
 	if err != nil {
-		return nil, internalError(err)
+		return errInternal(err), nil
 	}
 
 	items := make([]api.Download, len(downloads))
@@ -85,17 +82,17 @@ func (h *Handler) ListDownloads(ctx context.Context, params api.ListDownloadsPar
 }
 
 // CreateDownload handles POST /api/{secret}/downloads
-func (h *Handler) CreateDownload(ctx context.Context, req *api.CreateDownloadRequest, params api.CreateDownloadParams) (*api.Download, error) {
+func (h *Handler) CreateDownload(ctx context.Context, req *api.CreateDownloadRequest, params api.CreateDownloadParams) (api.CreateDownloadRes, error) {
 	if _, ok := h.svc.GetChannel(params.Secret); !ok {
-		return nil, notFound("channel not found")
+		return errNotFound("channel not found"), nil
 	}
 	if !isValidYouTubeURL(req.URL) {
-		return nil, badRequest("invalid YouTube URL")
+		return errBadRequest("invalid YouTube URL"), nil
 	}
 
 	download, err := h.svc.CreateDownload(ctx, params.Secret, req.URL)
 	if err != nil {
-		return nil, internalError(err)
+		return errInternal(err), nil
 	}
 
 	result := toAPIDownload(download)

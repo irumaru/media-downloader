@@ -13,7 +13,7 @@ import (
 	"github.com/ogen-go/ogen/validate"
 )
 
-func decodeCreateDownloadResponse(resp *http.Response) (res *Download, _ error) {
+func decodeCreateDownloadResponse(resp *http.Response) (res CreateDownloadRes, _ error) {
 	switch resp.StatusCode {
 	case 202:
 		// Code 202.
@@ -60,8 +60,8 @@ func decodeCreateDownloadResponse(resp *http.Response) (res *Download, _ error) 
 			return res, validate.InvalidContentType(ct)
 		}
 	}
-	// Convenient error response.
-	defRes, err := func() (res *ErrorResponseStatusCode, err error) {
+	// Default response.
+	res, err := func() (res CreateDownloadRes, err error) {
 		ct, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
 		if err != nil {
 			return res, errors.Wrap(err, "parse media type")
@@ -102,10 +102,10 @@ func decodeCreateDownloadResponse(resp *http.Response) (res *Download, _ error) 
 	if err != nil {
 		return res, errors.Wrapf(err, "default (code %d)", resp.StatusCode)
 	}
-	return res, errors.Wrap(defRes, "error")
+	return res, nil
 }
 
-func decodeGetChannelInfoResponse(resp *http.Response) (res *ChannelInfoResponse, _ error) {
+func decodeGetChannelInfoResponse(resp *http.Response) (res GetChannelInfoRes, _ error) {
 	switch resp.StatusCode {
 	case 200:
 		// Code 200.
@@ -143,8 +143,8 @@ func decodeGetChannelInfoResponse(resp *http.Response) (res *ChannelInfoResponse
 			return res, validate.InvalidContentType(ct)
 		}
 	}
-	// Convenient error response.
-	defRes, err := func() (res *ErrorResponseStatusCode, err error) {
+	// Default response.
+	res, err := func() (res GetChannelInfoRes, err error) {
 		ct, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
 		if err != nil {
 			return res, errors.Wrap(err, "parse media type")
@@ -185,10 +185,10 @@ func decodeGetChannelInfoResponse(resp *http.Response) (res *ChannelInfoResponse
 	if err != nil {
 		return res, errors.Wrapf(err, "default (code %d)", resp.StatusCode)
 	}
-	return res, errors.Wrap(defRes, "error")
+	return res, nil
 }
 
-func decodeGetDownloadResponse(resp *http.Response) (res *Download, _ error) {
+func decodeGetDownloadResponse(resp *http.Response) (res GetDownloadRes, _ error) {
 	switch resp.StatusCode {
 	case 200:
 		// Code 200.
@@ -235,8 +235,8 @@ func decodeGetDownloadResponse(resp *http.Response) (res *Download, _ error) {
 			return res, validate.InvalidContentType(ct)
 		}
 	}
-	// Convenient error response.
-	defRes, err := func() (res *ErrorResponseStatusCode, err error) {
+	// Default response.
+	res, err := func() (res GetDownloadRes, err error) {
 		ct, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
 		if err != nil {
 			return res, errors.Wrap(err, "parse media type")
@@ -277,10 +277,51 @@ func decodeGetDownloadResponse(resp *http.Response) (res *Download, _ error) {
 	if err != nil {
 		return res, errors.Wrapf(err, "default (code %d)", resp.StatusCode)
 	}
-	return res, errors.Wrap(defRes, "error")
+	return res, nil
 }
 
-func decodeListDownloadsResponse(resp *http.Response) (res *DownloadListResponse, _ error) {
+func decodeHealthcheckResponse(resp *http.Response) (res *HealthResponse, _ error) {
+	switch resp.StatusCode {
+	case 200:
+		// Code 200.
+		ct, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
+		if err != nil {
+			return res, errors.Wrap(err, "parse media type")
+		}
+		switch {
+		case ct == "application/json":
+			buf, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return res, err
+			}
+			d := jx.DecodeBytes(buf)
+
+			var response HealthResponse
+			if err := func() error {
+				if err := response.Decode(d); err != nil {
+					return err
+				}
+				if err := d.Skip(); err != io.EOF {
+					return errors.New("unexpected trailing data")
+				}
+				return nil
+			}(); err != nil {
+				err = &ogenerrors.DecodeBodyError{
+					ContentType: ct,
+					Body:        buf,
+					Err:         err,
+				}
+				return res, err
+			}
+			return &response, nil
+		default:
+			return res, validate.InvalidContentType(ct)
+		}
+	}
+	return res, validate.UnexpectedStatusCodeWithResponse(resp)
+}
+
+func decodeListDownloadsResponse(resp *http.Response) (res ListDownloadsRes, _ error) {
 	switch resp.StatusCode {
 	case 200:
 		// Code 200.
@@ -327,8 +368,8 @@ func decodeListDownloadsResponse(resp *http.Response) (res *DownloadListResponse
 			return res, validate.InvalidContentType(ct)
 		}
 	}
-	// Convenient error response.
-	defRes, err := func() (res *ErrorResponseStatusCode, err error) {
+	// Default response.
+	res, err := func() (res ListDownloadsRes, err error) {
 		ct, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
 		if err != nil {
 			return res, errors.Wrap(err, "parse media type")
@@ -369,5 +410,5 @@ func decodeListDownloadsResponse(resp *http.Response) (res *DownloadListResponse
 	if err != nil {
 		return res, errors.Wrapf(err, "default (code %d)", resp.StatusCode)
 	}
-	return res, errors.Wrap(defRes, "error")
+	return res, nil
 }
