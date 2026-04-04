@@ -1,11 +1,19 @@
 services:
-  media-downloader:
-    build: .
-    ports:
-      - "8080:8080"
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    working_dir: /app
     volumes:
+      - ./backend:/app
       - ./config.yaml:/app/config.yaml
       - ./data:/app/data
-      - /path/to/music_a:/data/music_a
-      - /path/to/music_b:/data/music_b
-    restart: unless-stopped
+      - go-cache:/root/.cache/go-build
+      - go-mod:/root/go/pkg/mod
+    ports:
+      - "8080:8080"
+    command: air
+
+volumes:
+  go-cache:
+  go-mod:
