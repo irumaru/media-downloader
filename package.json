@@ -1,5 +1,8 @@
 {
   "name": "media-downloader",
   "version": "1.0.0",
-  "private": true
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @media-downloader/frontend run dev"
+  }
 }
