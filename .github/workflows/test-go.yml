@@ -4,7 +4,8 @@ on:
   pull_request:
     paths:
       - 'backend/**'
-      - 'docker-compose.yml'
+      - 'docker-compose.yaml'
+      - '.github/workflows/test-go.yml'
 
 jobs:
   test:

@@ -9,5 +9,6 @@ const (
 	CreateDownloadOperation OperationName = "CreateDownload"
 	GetChannelInfoOperation OperationName = "GetChannelInfo"
 	GetDownloadOperation    OperationName = "GetDownload"
+	HealthcheckOperation    OperationName = "Healthcheck"
 	ListDownloadsOperation  OperationName = "ListDownloads"
 )

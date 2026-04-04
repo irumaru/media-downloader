@@ -55,64 +55,46 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		switch elem[0] {
-		case '/': // Prefix: "/api/"
+		case '/': // Prefix: "/"
 
-			if l := len("/api/"); len(elem) >= l && elem[0:l] == "/api/" {
+			if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 				elem = elem[l:]
 			} else {
 				break
 			}
 
-			// Param: "secret"
-			// Match until "/"
-			idx := strings.IndexByte(elem, '/')
-			if idx < 0 {
-				idx = len(elem)
-			}
-			args[0] = elem[:idx]
-			elem = elem[idx:]
-
 			if len(elem) == 0 {
-				switch r.Method {
-				case "GET":
-					s.handleGetChannelInfoRequest([1]string{
-						args[0],
-					}, elemIsEscaped, w, r)
-				default:
-					s.notAllowed(w, r, notAllowedParams{
-						allowedMethods: "GET",
-						allowedHeaders: nil,
-						acceptPost:     "",
-						acceptPatch:    "",
-					})
-				}
-
-				return
+				break
 			}
 			switch elem[0] {
-			case '/': // Prefix: "/downloads"
+			case 'a': // Prefix: "api/"
 
-				if l := len("/downloads"); len(elem) >= l && elem[0:l] == "/downloads" {
+				if l := len("api/"); len(elem) >= l && elem[0:l] == "api/" {
 					elem = elem[l:]
 				} else {
 					break
 				}
 
+				// Param: "secret"
+				// Match until "/"
+				idx := strings.IndexByte(elem, '/')
+				if idx < 0 {
+					idx = len(elem)
+				}
+				args[0] = elem[:idx]
+				elem = elem[idx:]
+
 				if len(elem) == 0 {
 					switch r.Method {
 					case "GET":
-						s.handleListDownloadsRequest([1]string{
-							args[0],
-						}, elemIsEscaped, w, r)
-					case "POST":
-						s.handleCreateDownloadRequest([1]string{
+						s.handleGetChannelInfoRequest([1]string{
 							args[0],
 						}, elemIsEscaped, w, r)
 					default:
 						s.notAllowed(w, r, notAllowedParams{
-							allowedMethods: "GET,POST",
-							allowedHeaders: rn3AllowedHeaders,
-							acceptPost:     "application/json",
+							allowedMethods: "GET",
+							allowedHeaders: nil,
+							acceptPost:     "",
 							acceptPatch:    "",
 						})
 					}
@@ -120,43 +102,100 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				switch elem[0] {
-				case '/': // Prefix: "/"
+				case '/': // Prefix: "/downloads"
 
-					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+					if l := len("/downloads"); len(elem) >= l && elem[0:l] == "/downloads" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
-					// Param: "id"
-					// Leaf parameter, slashes are prohibited
-					idx := strings.IndexByte(elem, '/')
-					if idx >= 0 {
-						break
-					}
-					args[1] = elem
-					elem = ""
-
 					if len(elem) == 0 {
-						// Leaf node.
 						switch r.Method {
 						case "GET":
-							s.handleGetDownloadRequest([2]string{
+							s.handleListDownloadsRequest([1]string{
 								args[0],
-								args[1],
+							}, elemIsEscaped, w, r)
+						case "POST":
+							s.handleCreateDownloadRequest([1]string{
+								args[0],
 							}, elemIsEscaped, w, r)
 						default:
 							s.notAllowed(w, r, notAllowedParams{
-								allowedMethods: "GET",
-								allowedHeaders: nil,
-								acceptPost:     "",
+								allowedMethods: "GET,POST",
+								allowedHeaders: rn3AllowedHeaders,
+								acceptPost:     "application/json",
 								acceptPatch:    "",
 							})
 						}
 
 						return
 					}
+					switch elem[0] {
+					case '/': // Prefix: "/"
 
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						// Param: "id"
+						// Leaf parameter, slashes are prohibited
+						idx := strings.IndexByte(elem, '/')
+						if idx >= 0 {
+							break
+						}
+						args[1] = elem
+						elem = ""
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "GET":
+								s.handleGetDownloadRequest([2]string{
+									args[0],
+									args[1],
+								}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, notAllowedParams{
+									allowedMethods: "GET",
+									allowedHeaders: nil,
+									acceptPost:     "",
+									acceptPatch:    "",
+								})
+							}
+
+							return
+						}
+
+					}
+
+				}
+
+			case 'h': // Prefix: "health"
+
+				if l := len("health"); len(elem) >= l && elem[0:l] == "health" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch r.Method {
+					case "GET":
+						s.handleHealthcheckRequest([0]string{}, elemIsEscaped, w, r)
+					default:
+						s.notAllowed(w, r, notAllowedParams{
+							allowedMethods: "GET",
+							allowedHeaders: nil,
+							acceptPost:     "",
+							acceptPatch:    "",
+						})
+					}
+
+					return
 				}
 
 			}
@@ -247,64 +286,43 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 			break
 		}
 		switch elem[0] {
-		case '/': // Prefix: "/api/"
+		case '/': // Prefix: "/"
 
-			if l := len("/api/"); len(elem) >= l && elem[0:l] == "/api/" {
+			if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 				elem = elem[l:]
 			} else {
 				break
 			}
 
-			// Param: "secret"
-			// Match until "/"
-			idx := strings.IndexByte(elem, '/')
-			if idx < 0 {
-				idx = len(elem)
-			}
-			args[0] = elem[:idx]
-			elem = elem[idx:]
-
 			if len(elem) == 0 {
-				switch method {
-				case "GET":
-					r.name = GetChannelInfoOperation
-					r.summary = ""
-					r.operationID = "getChannelInfo"
-					r.operationGroup = ""
-					r.pathPattern = "/api/{secret}"
-					r.args = args
-					r.count = 1
-					return r, true
-				default:
-					return
-				}
+				break
 			}
 			switch elem[0] {
-			case '/': // Prefix: "/downloads"
+			case 'a': // Prefix: "api/"
 
-				if l := len("/downloads"); len(elem) >= l && elem[0:l] == "/downloads" {
+				if l := len("api/"); len(elem) >= l && elem[0:l] == "api/" {
 					elem = elem[l:]
 				} else {
 					break
 				}
 
+				// Param: "secret"
+				// Match until "/"
+				idx := strings.IndexByte(elem, '/')
+				if idx < 0 {
+					idx = len(elem)
+				}
+				args[0] = elem[:idx]
+				elem = elem[idx:]
+
 				if len(elem) == 0 {
 					switch method {
 					case "GET":
-						r.name = ListDownloadsOperation
+						r.name = GetChannelInfoOperation
 						r.summary = ""
-						r.operationID = "listDownloads"
+						r.operationID = "getChannelInfo"
 						r.operationGroup = ""
-						r.pathPattern = "/api/{secret}/downloads"
-						r.args = args
-						r.count = 1
-						return r, true
-					case "POST":
-						r.name = CreateDownloadOperation
-						r.summary = ""
-						r.operationID = "createDownload"
-						r.operationGroup = ""
-						r.pathPattern = "/api/{secret}/downloads"
+						r.pathPattern = "/api/{secret}"
 						r.args = args
 						r.count = 1
 						return r, true
@@ -313,40 +331,100 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					}
 				}
 				switch elem[0] {
-				case '/': // Prefix: "/"
+				case '/': // Prefix: "/downloads"
 
-					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+					if l := len("/downloads"); len(elem) >= l && elem[0:l] == "/downloads" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
-					// Param: "id"
-					// Leaf parameter, slashes are prohibited
-					idx := strings.IndexByte(elem, '/')
-					if idx >= 0 {
-						break
-					}
-					args[1] = elem
-					elem = ""
-
 					if len(elem) == 0 {
-						// Leaf node.
 						switch method {
 						case "GET":
-							r.name = GetDownloadOperation
+							r.name = ListDownloadsOperation
 							r.summary = ""
-							r.operationID = "getDownload"
+							r.operationID = "listDownloads"
 							r.operationGroup = ""
-							r.pathPattern = "/api/{secret}/downloads/{id}"
+							r.pathPattern = "/api/{secret}/downloads"
 							r.args = args
-							r.count = 2
+							r.count = 1
+							return r, true
+						case "POST":
+							r.name = CreateDownloadOperation
+							r.summary = ""
+							r.operationID = "createDownload"
+							r.operationGroup = ""
+							r.pathPattern = "/api/{secret}/downloads"
+							r.args = args
+							r.count = 1
 							return r, true
 						default:
 							return
 						}
 					}
+					switch elem[0] {
+					case '/': // Prefix: "/"
 
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						// Param: "id"
+						// Leaf parameter, slashes are prohibited
+						idx := strings.IndexByte(elem, '/')
+						if idx >= 0 {
+							break
+						}
+						args[1] = elem
+						elem = ""
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "GET":
+								r.name = GetDownloadOperation
+								r.summary = ""
+								r.operationID = "getDownload"
+								r.operationGroup = ""
+								r.pathPattern = "/api/{secret}/downloads/{id}"
+								r.args = args
+								r.count = 2
+								return r, true
+							default:
+								return
+							}
+						}
+
+					}
+
+				}
+
+			case 'h': // Prefix: "health"
+
+				if l := len("health"); len(elem) >= l && elem[0:l] == "health" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch method {
+					case "GET":
+						r.name = HealthcheckOperation
+						r.summary = ""
+						r.operationID = "healthcheck"
+						r.operationGroup = ""
+						r.pathPattern = "/health"
+						r.args = args
+						r.count = 0
+						return r, true
+					default:
+						return
+					}
 				}
 
 			}

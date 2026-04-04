@@ -106,6 +106,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /health:
+    get:
+      operationId: healthcheck
+      description: サービスの死活確認
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
 components:
   schemas:
     ChannelInfoResponse:
@@ -182,3 +194,11 @@ components:
         message:
           type: string
       description: エラーレスポンス
+    HealthResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+      description: ヘルスチェックレスポンス

@@ -3,15 +3,10 @@
 package api
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/go-faster/errors"
 )
-
-func (s *ErrorResponseStatusCode) Error() string {
-	return fmt.Sprintf("code %d: %+v", s.StatusCode, s.Response)
-}
 
 // チャンネル情報レスポンス.
 // Ref: #/components/schemas/ChannelInfoResponse
@@ -28,6 +23,8 @@ func (s *ChannelInfoResponse) GetName() string {
 func (s *ChannelInfoResponse) SetName(val string) {
 	s.Name = val
 }
+
+func (*ChannelInfoResponse) getChannelInfoRes() {}
 
 // ダウンロード開始リクエスト.
 // Ref: #/components/schemas/CreateDownloadRequest
@@ -149,6 +146,9 @@ func (s *Download) SetCompletedAt(val OptDateTime) {
 	s.CompletedAt = val
 }
 
+func (*Download) createDownloadRes() {}
+func (*Download) getDownloadRes()    {}
+
 // ダウンロード一覧レスポンス.
 // Ref: #/components/schemas/DownloadListResponse
 type DownloadListResponse struct {
@@ -164,6 +164,8 @@ func (s *DownloadListResponse) GetDownloads() []Download {
 func (s *DownloadListResponse) SetDownloads(val []Download) {
 	s.Downloads = val
 }
+
+func (*DownloadListResponse) listDownloadsRes() {}
 
 // ダウンロードステータス.
 // Ref: #/components/schemas/DownloadStatus
@@ -269,6 +271,27 @@ func (s *ErrorResponseStatusCode) SetStatusCode(val int) {
 // SetResponse sets the value of Response.
 func (s *ErrorResponseStatusCode) SetResponse(val ErrorResponse) {
 	s.Response = val
+}
+
+func (*ErrorResponseStatusCode) createDownloadRes() {}
+func (*ErrorResponseStatusCode) getChannelInfoRes() {}
+func (*ErrorResponseStatusCode) getDownloadRes()    {}
+func (*ErrorResponseStatusCode) listDownloadsRes()  {}
+
+// ヘルスチェックレスポンス.
+// Ref: #/components/schemas/HealthResponse
+type HealthResponse struct {
+	Status string `json:"status"`
+}
+
+// GetStatus returns the value of Status.
+func (s *HealthResponse) GetStatus() string {
+	return s.Status
+}
+
+// SetStatus sets the value of Status.
+func (s *HealthResponse) SetStatus(val string) {
+	s.Status = val
 }
 
 // NewOptDateTime returns new OptDateTime with value set to v.

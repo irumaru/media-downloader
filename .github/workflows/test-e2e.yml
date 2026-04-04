@@ -33,7 +33,7 @@ jobs:
           load: true
 
       - name: Docker Compose Up
-        run: docker compose up -d
+        run: docker compose up -d wait backend
 
       - name: Run E2E Tests
         run: mise run test:e2e
