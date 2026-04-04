@@ -5,7 +5,8 @@ on:
     paths:
       - 'e2e/**'
       - 'backend/**'
-      - 'docker-compose.yml'
+      - 'docker-compose.yaml'
+      - '.github/workflows/test-e2e.yml'
 
 jobs:
   test:
