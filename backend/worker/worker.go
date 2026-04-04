@@ -35,6 +35,7 @@ func Run(ctx context.Context, ytdlpPath, audioFormat, outputDir, url string, cal
 		"-x",
 		"--audio-quality", "0",
 		"--newline",
+		"--no-overwrites",
 		"-o", outputDir + "/%(title)s.%(ext)s",
 		"--no-playlist",
 	}
