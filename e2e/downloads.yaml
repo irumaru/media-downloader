@@ -1,6 +1,6 @@
 desc: ダウンロードの作成と一覧取得
 vars:
-  secret: "abc123def456"
+  secret: "list_secret_b"
 runners:
   req:
     endpoint: http://localhost:8080
@@ -38,3 +38,17 @@ steps:
       current.res.status == 200
       && len(current.res.body.downloads) > 0
       && current.res.body.downloads[0].id == steps.create_download.res.body.id
+
+  wait_for_completion:
+    desc: ダウンロードが完了するまで待機する
+    loop:
+      count: 30
+      interval: 1s
+      until: |
+        current.res.status == 200
+        && current.res.body.id == steps.create_download.res.body.id
+        && current.res.body.status == "completed"
+    req:
+      /api/{{ vars.secret }}/downloads/{{ steps.create_download.res.body.id }}:
+        get:
+          body: null

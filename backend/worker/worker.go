@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"log/slog"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -53,14 +54,17 @@ func Run(ctx context.Context, ytdlpPath, audioFormat, outputDir, url string, cal
 		return fmt.Errorf("stderr pipe: %w", err)
 	}
 
+	slog.DebugContext(ctx, "Starting yt-dlp", "cmd", cmd.String())
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("start yt-dlp: %w", err)
 	}
+	slog.InfoContext(ctx, "yt-dlp started", "url", url, "outputDir", outputDir, "audioFormat", audioFormat)
 
-	// Drain stderr to avoid blocking.
+	// Drain stderr and log each line as a warning.
 	go func() {
 		s := bufio.NewScanner(stderr)
 		for s.Scan() {
+			slog.WarnContext(ctx, "yt-dlp stderr", "line", s.Text())
 		}
 	}()
 
@@ -92,6 +96,7 @@ func Run(ctx context.Context, ytdlpPath, audioFormat, outputDir, url string, cal
 			if idx := strings.LastIndex(base, "."); idx >= 0 {
 				title = base[:idx]
 			}
+			slog.InfoContext(ctx, "download destination detected", "title", title, "dest", dest)
 
 		case extractRe.MatchString(line):
 			m := extractRe.FindStringSubmatch(line)
@@ -102,6 +107,7 @@ func Run(ctx context.Context, ytdlpPath, audioFormat, outputDir, url string, cal
 				filename = dest
 			}
 			status = "converting"
+			slog.InfoContext(ctx, "converting audio", "title", title, "filename", filename)
 			callback(ProgressUpdate{
 				Title:    title,
 				Status:   status,
@@ -112,9 +118,11 @@ func Run(ctx context.Context, ytdlpPath, audioFormat, outputDir, url string, cal
 	}
 
 	if err := cmd.Wait(); err != nil {
+		slog.ErrorContext(ctx, "yt-dlp failed", "url", url, "err", err)
 		return fmt.Errorf("yt-dlp exited with error: %w", err)
 	}
 
+	slog.InfoContext(ctx, "download completed", "url", url, "title", title, "filename", filename)
 	callback(ProgressUpdate{
 		Title:    title,
 		Status:   "completed",

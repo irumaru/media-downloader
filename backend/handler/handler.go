@@ -51,6 +51,21 @@ func (h *Handler) GetChannelInfo(_ context.Context, params api.GetChannelInfoPar
 	return &api.ChannelInfoResponse{Name: ch.Name}, nil
 }
 
+// GetDownload handles GET /api/{secret}/downloads/{id}
+func (h *Handler) GetDownload(ctx context.Context, params api.GetDownloadParams) (*api.Download, error) {
+	if _, ok := h.svc.GetChannel(params.Secret); !ok {
+		return nil, notFound("channel not found")
+	}
+
+	download, err := h.svc.GetDownload(ctx, params.ID)
+	if err != nil {
+		return nil, notFound("download not found")
+	}
+
+	result := toAPIDownload(download)
+	return &result, nil
+}
+
 // ListDownloads handles GET /api/{secret}/downloads
 func (h *Handler) ListDownloads(ctx context.Context, params api.ListDownloadsParams) (*api.DownloadListResponse, error) {
 	if _, ok := h.svc.GetChannel(params.Secret); !ok {

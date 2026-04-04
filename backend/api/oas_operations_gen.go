@@ -8,5 +8,6 @@ type OperationName = string
 const (
 	CreateDownloadOperation OperationName = "CreateDownload"
 	GetChannelInfoOperation OperationName = "GetChannelInfo"
+	GetDownloadOperation    OperationName = "GetDownload"
 	ListDownloadsOperation  OperationName = "ListDownloads"
 )

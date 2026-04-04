@@ -70,3 +70,8 @@ op createDownload(
   @statusCode statusCode: 202;
   @body download: Download;
 } | ErrorResponse;
+
+/** ダウンロード情報を取得 */
+@route("/downloads/{id}")
+@get
+op getDownload(@path secret: string, @path id: string): Download | ErrorResponse;

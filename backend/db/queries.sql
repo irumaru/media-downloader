@@ -1,3 +1,7 @@
+-- name: GetDownloadByID :one
+SELECT * FROM downloads
+WHERE id = :id;
+
 -- name: GetDownloadsByChannel :many
 SELECT * FROM downloads
 WHERE channel = :channel
@@ -15,5 +19,5 @@ SET status       = :status,
     title        = :title,
     filename     = :filename,
     error        = :error,
-    completed_at = CASE WHEN :status IN ('completed', 'error') THEN CURRENT_TIMESTAMP ELSE NULL END
+    completed_at = :completed_at
 WHERE id = :id;
