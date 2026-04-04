@@ -1,3 +1,5 @@
 packages:
   - "spec"
   - "frontend"
+
+minimumReleaseAge: 4320 # 3 days in minutes
