@@ -6,6 +6,7 @@ on:
       - 'e2e/**'
       - 'backend/**'
       - 'docker-compose.yaml'
+      - 'Dockerfile'
       - '.github/workflows/test-e2e.yml'
 
 jobs:

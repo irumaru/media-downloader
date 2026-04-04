@@ -30,12 +30,14 @@ RUN CGO_ENABLED=0 go build -o media-downloader .
 # Stage 3: Runtime
 FROM debian:bookworm-slim
 
+COPY ./requirements.txt /tmp/requirements.txt
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     ffmpeg \
     ca-certificates \
-    && pip3 install --break-system-packages yt-dlp \
+    && pip3 install --break-system-packages -r /tmp/requirements.txt \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
