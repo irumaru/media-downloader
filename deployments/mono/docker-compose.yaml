@@ -1,11 +1,10 @@
 services:
   media-downloader:
-    build: .
+    image: ghcr.io/irumaru/media-downloader/mono:latest
     ports:
       - "8080:8080"
     volumes:
       - ./config.yaml:/app/config.yaml
       - ./data:/app/data
-      - /path/to/music_a:/data/music_a
-      - /path/to/music_b:/data/music_b
+      #- /mnt/nas1/music_a:/app/data/music_a
     restart: unless-stopped

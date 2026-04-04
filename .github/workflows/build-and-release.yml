@@ -1,0 +1,171 @@
+name: build-and-release/container
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      mono:
+        description: "Build and release all services"
+        type: boolean
+        default: true
+
+concurrency: build-and-release/container
+
+jobs:
+  calc_tag:
+    runs-on: ubuntu-latest
+    outputs:
+      tagName: ${{ steps.calc.outputs.tag }}
+    steps:
+      - id: calc
+        name: Calculate release tag
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const per_page = 100;
+            const d = new Date();
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const datePart = `${year}.${month}${day}`;
+            let page = 1;
+            let max = 0;
+            while (true) {
+              const res = await github.rest.repos.listTags({ owner, repo, per_page, page });
+              if (!res || !res.data || res.data.length === 0) break;
+              for (const t of res.data) {
+                const m = t.name.match(new RegExp(`^v${year}\\.${month}${day}\\.(\\d+)$`));
+                if (m) {
+                  const n = parseInt(m[1], 10);
+                  if (n > max) max = n;
+                }
+              }
+              if (res.data.length < per_page) break;
+              page += 1;
+            }
+            const next = max + 1;
+            const tagName = `v${datePart}.${next}`;
+            core.setOutput('tag', tagName);
+            console.log(`Calculated tag ${tagName}`);
+
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.set.outputs.services }}
+    steps:
+      - id: set
+        run: |
+          services=()
+          if [ "${{ github.event.inputs.mono }}" = "true" ]; then services+=("mono"); fi
+          json=$(printf '%s\n' "${services[@]}" | jq -R . | jq -sc .)
+          echo "services=$json" >> "$GITHUB_OUTPUT"
+
+  docker:
+    needs: [calc_tag, prepare]
+    if: needs.prepare.outputs.services != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.prepare.outputs.services) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and push to ghcr.io
+        uses: docker/build-push-action@v7
+        with:
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}/${{ matrix.service }}:${{ needs.calc_tag.outputs.tagName }}
+            ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}/${{ matrix.service }}:latest
+          context: ./
+          file: ./deployments/${{ matrix.service }}/Dockerfile
+
+  create_release:
+    needs: [docker, calc_tag, prepare]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Create CalVer tag and GitHub Release
+        uses: actions/github-script@v8
+        env:
+          TAG_NAME: ${{ needs.calc_tag.outputs.tagName }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const sha = context.sha;
+            const tagName = process.env.TAG_NAME;
+            console.log(`Creating tag ${tagName} at ${sha}`);
+            await github.rest.git.createRef({ owner, repo, ref: `refs/tags/${tagName}`, sha });
+
+            // Find previous tag (excluding the new one)
+            const tagsRes = await github.rest.repos.listTags({ owner, repo, per_page: 10 });
+            const tags = tagsRes.data.map(t => t.name).filter(t => t !== tagName);
+            let previousTag = null;
+            if (tags.length > 0) {
+              // Assume tags are sorted by recency, so the first is the previous
+              previousTag = tags[0];
+            }
+
+            let releaseBody = '';
+            if (previousTag) {
+              // Get commits between previousTag and tagName
+              const compareRes = await github.rest.repos.compareCommits({
+                owner,
+                repo,
+                base: previousTag,
+                head: sha,
+              });
+              const commits = compareRes.data.commits;
+              if (commits.length > 0) {
+                releaseBody += `## Changes since [${previousTag}](https://github.com/${owner}/${repo}/releases/tag/${previousTag})\n\n`;
+                for (const c of commits) {
+                  const msg = c.commit.message.split('\n')[0];
+                  releaseBody += `- ${msg} ([${c.sha.substring(0,7)}](https://github.com/${owner}/${repo}/commit/${c.sha}))\n`;
+                }
+                releaseBody += `\n[Full diff](https://github.com/${owner}/${repo}/compare/${previousTag}...${tagName})\n`;
+              } else {
+                releaseBody += `No changes since previous release [${previousTag}](https://github.com/${owner}/${repo}/releases/tag/${previousTag}).\n`;
+              }
+            } else {
+              releaseBody = 'First release.';
+            }
+
+            // Add GHCR image links to the release body
+            const services = JSON.parse('${{ needs.prepare.outputs.services }}');
+            releaseBody += `\n\n**Build images**:\n`;
+            for (const svc of services) {
+              const imageUrl = `ghcr.io/${process.env.GITHUB_REPOSITORY_OWNER}/${context.repo.repo}/${svc}:${tagName}`;
+              releaseBody += `\n${imageUrl}\n`;
+            }
+
+            await github.rest.repos.createRelease({
+              owner,
+              repo,
+              tag_name: tagName,
+              name: tagName,
+              body: releaseBody,
+              draft: false,
+              prerelease: false,
+              target_commitish: sha
+            });
+            console.log(`Release ${tagName} created`);
