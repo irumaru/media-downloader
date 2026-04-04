@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'backend/**'
+      - '.mise.toml'
       - '.github/workflows/test-go.yml'
 
 jobs:
