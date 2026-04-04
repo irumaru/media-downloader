@@ -2,6 +2,9 @@ name: test-go
 
 on:
   pull_request:
+    paths:
+      - 'backend/**'
+      - 'docker-compose.yml'
 
 jobs:
   test:
