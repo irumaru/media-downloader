@@ -30,33 +30,43 @@ spec/              TypeSpec による API 定義
 
 ## 構築
 
-### 設定
+### 前提
 
-`config.yaml` を編集して起動します。
+dockerをインストールします。
+
+### 設定ファイルの編集
+
+`deployments/mono/config.yaml`を編集します。
 
 ```yaml
 server:
   port: 8080
-  static_dir: "./frontend/dist"
+  static_dir: "./frontend/dist"      # フロントエンド
 
 database:
-  path: "./data/media-downloader.db"
+  path: "./data/media-downloader.db" # データベースファイル
 
 ytdlp:
-  path: "yt-dlp"       # yt-dlp の実行パス
-  audio_format: ""     # 音声変換フォーマット（例: "mp3"）、空文字で変換なし
+  path: "yt-dlp"                     # yt-dlp の実行パス
+  audio_format: ""                   # 音声変換フォーマット（例: "mp3"）、空文字で変換なし
 
-channels:
-  - secret: "abc123def456"       # URL の認証トークン（/api/{secret}/...）
-    name: "Music Collection A"
-    output_dir: "/data/music_a"
-
-  - secret: "xyz789ghi012"
+channels:                            # 各チャンネル(ダウンロード先)ごとの設定
+  - secret: "replace_secret_a"       # URL の認証トークン（てきとうなランダムな値を入れる）, フロントエンドのURL: http://localhost:8080/{secret}
+    name: "Music Collection A"       # 名前
+    output_dir: "/app/data/music_a"  # 保存先
+  - secret: "replace_secret_a"
     name: "Music Collection B"
-    output_dir: "/data/music_b"
+    output_dir: "/app/data/music_b"
 ```
 
 チャンネルごとに `secret` を設定し、そのシークレットが API のパスおよび Web UI のアクセスキーになります。
+
+### 起動
+
+```bash
+cd deployments/mono
+docker compose up
+```
 
 ## 開発環境
 
