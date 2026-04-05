@@ -49,6 +49,7 @@ database:
 ytdlp:
   path: "yt-dlp"                     # yt-dlp の実行パス
   audio_format: ""                   # 音声変換フォーマット（例: "mp3"）、空文字で変換なし
+  output_path_format: ""             # yt-dlpのファイル名のフォーマット 例: %(artist,uploader)s/%(album,NA)s/%(title)s.%(ext)s 、空文字: %(title)s.%(ext)s
 
 channels:                            # 各チャンネル(ダウンロード先)ごとの設定
   - secret: "replace_secret_a"       # URL の認証トークン（てきとうなランダムな値を入れる）, フロントエンドのURL: http://localhost:8080/{secret}

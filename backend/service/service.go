@@ -74,7 +74,7 @@ func (s *Service) CreateDownload(ctx context.Context, secret, url string) (db.Do
 func (s *Service) runDownload(ch config.ChannelConfig, d db.Download) {
 	ctx := context.Background()
 
-	err := worker.Run(ctx, s.ytdlp.Path, s.ytdlp.AudioFormat, ch.OutputDir, d.Url,
+	err := worker.Run(ctx, s.ytdlp.Path, s.ytdlp.AudioFormat, ch.OutputDir, ch.OutputPathFormat, d.Url,
 		func(u worker.ProgressUpdate) {
 			err := s.queries.UpdateDownloadStatus(ctx, db.UpdateDownloadStatusParams{
 				ID:          d.ID,

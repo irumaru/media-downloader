@@ -8,6 +8,7 @@ database:
 ytdlp:
   path: "yt-dlp"
   audio_format: ""
+  output_path_format: ""
 
 channels:
   - secret: "replace_secret_a"
