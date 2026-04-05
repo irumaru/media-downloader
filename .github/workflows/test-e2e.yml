@@ -39,3 +39,7 @@ jobs:
 
       - name: Run E2E Tests
         run: mise run test:e2e
+
+      - name: Show Docker logs on failure
+        if: failure()
+        run: docker compose logs
