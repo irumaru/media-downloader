@@ -30,17 +30,21 @@ var (
 
 // Run executes yt-dlp and streams progress updates via callback.
 // It blocks until the download is complete or the context is cancelled.
-func Run(ctx context.Context, ytdlpPath, audioFormat, outputDir, url string, callback ProgressCallback) error {
+func Run(ctx context.Context, ytdlpPath, audioFormat, outputDir, outputPathFormat, url string, callback ProgressCallback) error {
 	args := []string{
 		"-x",
 		"--audio-quality", "0",
 		"--newline",
 		"--no-overwrites",
-		"-o", outputDir + "/%(title)s.%(ext)s",
 		"--no-playlist",
 	}
 	if audioFormat != "" {
 		args = append(args, "--audio-format", audioFormat)
+	}
+	if outputPathFormat != "" {
+		args = append(args, "-o", outputDir+"/"+outputPathFormat)
+	} else {
+		args = append(args, "-o", outputDir+"/%(title)s.%(ext)s")
 	}
 	args = append(args, url)
 

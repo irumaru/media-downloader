@@ -28,9 +28,10 @@ type YtdlpConfig struct {
 }
 
 type ChannelConfig struct {
-	Secret    string `yaml:"secret"`
-	Name      string `yaml:"name"`
-	OutputDir string `yaml:"output_dir"`
+	Secret           string `yaml:"secret"`
+	Name             string `yaml:"name"`
+	OutputDir        string `yaml:"output_dir"`
+	OutputPathFormat string `yaml:"output_path_format"`
 }
 
 func Load(path string) (*Config, error) {
