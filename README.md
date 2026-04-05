@@ -110,3 +110,13 @@ mise run gen
 ```bash
 mise run test
 ```
+
+## サードパーティライセンス
+
+このアプリケーションは Docker イメージ内で [FFmpeg](https://ffmpeg.org/) を使用しています。
+
+- **著作権者**: FFmpeg contributors
+- **ライセンス**: GNU Lesser General Public License v2.1 以降（LGPL v2.1+）、または GNU General Public License v2 以降（GPL v2+）（ビルド構成による）
+- **ソースコード**: https://ffmpeg.org/download.html
+
+FFmpeg のライセンス詳細については https://ffmpeg.org/legal.html を参照してください。
